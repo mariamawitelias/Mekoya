@@ -1,0 +1,16 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: mekoya-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your environment or .env file}
+      POSTGRES_DB: mekoya
+    ports:
+      - "5433:5432"
+    volumes:
+      - mekoya_pgdata:/var/lib/postgresql/data
+
+volumes:
+  mekoya_pgdata:

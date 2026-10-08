@@ -1,12 +1,10 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  extensions = [vector]
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Language {
@@ -58,12 +56,7 @@ enum EmailTemplate {
   DOCUMENT_REJECTED
 }
 
-enum IngestionStatus {
-  PENDING
-  PROCESSING
-  READY
-  FAILED
-}
+
 
 model User {
   id            String   @id @default(uuid())
@@ -85,7 +78,6 @@ model User {
   verificationTokens VerificationToken[]
   appointments       Appointment[]
   reviewedDocuments  DocumentSubmission[] @relation("DocumentReviewer")
-  uploadedSources    SourceDocument[]
   auditLogs          AuditLog[]
   emailLogs          EmailLog[]
 
@@ -345,32 +337,4 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@index([createdAt])
-}
-
-// ───────────────────────── RAG ─────────────────────────
-
-model SourceDocument {
-  id           String          @id @default(uuid())
-  title        String
-  filePath     String
-  mimeType     String
-  status       IngestionStatus @default(PENDING)
-  uploadedById String?
-  createdAt    DateTime        @default(now())
-
-  uploadedBy User?           @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
-  chunks     DocumentChunk[]
-}
-
-model DocumentChunk {
-  id               String                       @id @default(uuid())
-  sourceDocumentId String
-  chunkIndex       Int
-  content          String
-  // Insert and search with $executeRaw / $queryRaw. Dimension must match your embedding model.
-  embedding        Unsupported("vector(768)")?
-
-  sourceDocument SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
-
-  @@unique([sourceDocumentId, chunkIndex])
 }
