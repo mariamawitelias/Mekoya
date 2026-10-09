@@ -30,3 +30,8 @@ export const loginBodySchema = z.object({
 
 export type RegisterBody = z.infer<typeof registerBodySchema>;
 export type LoginBody = z.infer<typeof loginBodySchema>;
+export const googleBodySchema = z.object({
+  idToken: z.string().min(20, 'Google ID token is required'),
+});
+
+export type GoogleBody = z.infer<typeof googleBodySchema>;
