@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idString, idParamSchema, paginationQuerySchema } from './common.schema';
+import { idString, idParamSchema, paginationQuerySchema } from './common.schema.js';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const timeSlot = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:mm, for example 08:30');
