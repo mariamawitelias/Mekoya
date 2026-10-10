@@ -4,7 +4,7 @@ import * as authService from '../services/auth.service.js';
 import { AppError, UnauthorizedError } from '../utils/errors.js';
 import { clearRefreshCookie, REFRESH_COOKIE_NAME, setRefreshCookie } from '../utils/cookies.js';
 import { ok } from '../utils/response.js';
-
+import type { GoogleBody } from '../schemas/auth.schema.js';
 export async function register(req: Request, res: Response): Promise<void> {
   const body = req.body as RegisterBody;
   const user = await authService.register(body);
@@ -51,4 +51,10 @@ export async function logoutAll(req: Request, res: Response): Promise<void> {
   await authService.logoutAll(req.user.id);
   clearRefreshCookie(res);
   ok(res, { loggedOut: true });
+}
+export async function google(req: Request, res: Response): Promise<void> {
+  const { idToken } = req.body as GoogleBody;
+  const { accessToken, refreshToken, user } = await authService.loginWithGoogle(idToken, req.get('user-agent'));
+  setRefreshCookie(res, refreshToken);
+  ok(res, { accessToken, user });
 }

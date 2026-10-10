@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <body>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload" data-client_id="13550964584-5vnvr6vsjnbkgsheckika54266i8qu7v.apps.googleusercontent.com" data-callback="handleCredential" data-auto_prompt="false"></div>
+    <div class="g_id_signin" data-type="standard"></div>
+    <pre id="out">Sign in to see the API response</pre>
+
+    <script>
+      async function handleCredential(response) {
+        const res = await fetch('http://localhost:4000/api/v1/auth/google', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken: response.credential }),
+        });
+        document.getElementById('out').textContent = JSON.stringify(await res.json(), null, 2);
+      }
+    </script>
+  </body>
+</html>

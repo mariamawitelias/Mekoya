@@ -1,5 +1,6 @@
 import { OAuth2Client } from 'google-auth-library';
 import { env } from '../config/env.js';
+import { logger } from '../config/logger.js';
 import { AppError, UnauthorizedError } from '../utils/errors.js';
 
 export interface GoogleProfile {
@@ -19,7 +20,15 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleProfil
   try {
     const ticket = await client.verifyIdToken({ idToken, audience: env.GOOGLE_CLIENT_ID });
     payload = ticket.getPayload();
-  } catch {
+  } catch (error) {
+    logger.warn(
+      {
+        err: error instanceof Error
+          ? { name: error.name, message: error.message }
+          : { message: String(error) },
+      },
+      'Google ID token verification failed',
+    );
     throw new UnauthorizedError('Invalid Google token');
   }
 

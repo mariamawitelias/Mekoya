@@ -1,8 +1,9 @@
 import { prisma } from '../config/prisma.js';
 import type { LoginBody, RegisterBody } from '../schemas/auth.schema.js';
-import { ForbiddenError, UnauthorizedError } from '../utils/errors.js';
+import { ConflictError, ForbiddenError, UnauthorizedError } from '../utils/errors.js';
 import { DUMMY_HASH, hashPassword, verifyPassword } from '../utils/password.js';
-import { issueTokenPair, userWithRoleInclude } from './token.service.js';
+import { type GoogleProfile, verifyGoogleIdToken } from './google.service.js';
+import { issueTokenPair, type UserWithRole, userWithRoleInclude } from './token.service.js';
 import { logger } from '../config/logger.js';
 import { hashToken } from '../utils/tokens.js';
 import { type TokenPair } from './token.service.js';
@@ -36,7 +37,20 @@ export async function register(input: RegisterBody) {
     },
   });
 }
-
+async function startSession(user: UserWithRole, userAgent?: string) {
+  const { accessToken, refreshToken } = await issueTokenPair(user, userAgent ? { userAgent } : {});
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role.name,
+      fullName: user.profile?.fullName ?? null,
+      emailVerified: user.emailVerified,
+    },
+  };
+}
 export async function login(input: LoginBody, userAgent?: string) {
   const user = await prisma.user.findUnique({
     where: { email: input.email },
@@ -53,16 +67,7 @@ export async function login(input: LoginBody, userAgent?: string) {
 
   const tokens = await issueTokenPair(user, userAgent ? { userAgent } : {});
 
-  return {
-    ...tokens,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role.name,
-      fullName: user.profile?.fullName ?? null,
-      emailVerified: user.emailVerified,
-    },
-  };
+  return startSession(user, userAgent);
 }
 async function revokeFamily(familyId: string): Promise<number> {
   const { count } = await prisma.refreshToken.updateMany({
@@ -144,4 +149,87 @@ export async function logoutAll(userId: string): Promise<void> {
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
+}
+async function linkGoogleAccount(existing: UserWithRole, googleId: string): Promise<UserWithRole> {
+  if (existing.googleId && existing.googleId !== googleId) {
+    throw new ConflictError('This email is already linked to a different Google account');
+  }
+
+  // If the email was never verified, whoever set the password may not own the address
+  const wasUnverified = !existing.emailVerified;
+
+  return prisma.$transaction(async (tx) => {
+    if (wasUnverified) {
+      await tx.refreshToken.updateMany({
+        where: { userId: existing.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        actorId: existing.id,
+        action: 'GOOGLE_ACCOUNT_LINKED',
+        entityType: 'User',
+        entityId: existing.id,
+        metadata: { clearedPassword: wasUnverified },
+      },
+    });
+
+    return tx.user.update({
+      where: { id: existing.id },
+      data: {
+        googleId,
+        emailVerified: true,
+        ...(wasUnverified ? { passwordHash: null } : {}),
+      },
+      include: userWithRoleInclude,
+    });
+  });
+}
+
+async function createGoogleUser(profile: GoogleProfile): Promise<UserWithRole> {
+  const role = await prisma.role.findUnique({ where: { name: 'CITIZEN' } });
+  if (!role) {
+    throw new Error('CITIZEN role is missing. Run the database seed.');
+  }
+
+  const fullName = profile.name?.trim() || profile.email.split('@')[0] || 'New User';
+
+  const createdUser = (await prisma.user.create({
+    data: {
+      email: profile.email,
+      googleId: profile.googleId,
+      emailVerified: true,
+      passwordHash: null,
+      roleId: role.id,
+      profile: { create: { fullName } },
+    },
+    include: userWithRoleInclude,
+  })) as UserWithRole;
+
+  return createdUser;
+}
+
+export async function loginWithGoogle(idToken: string, userAgent?: string) {
+  const profile = await verifyGoogleIdToken(idToken);
+
+  let user = await prisma.user.findUnique({
+    where: { googleId: profile.googleId },
+    include: userWithRoleInclude,
+  });
+
+  if (!user) {
+    const existing = await prisma.user.findUnique({
+      where: { email: profile.email },
+      include: userWithRoleInclude,
+    });
+    user = existing ? await linkGoogleAccount(existing, profile.googleId) : await createGoogleUser(profile);
+  }
+
+  if (!user.isActive) {
+    throw new ForbiddenError('This account has been deactivated');
+  }
+
+  return startSession(user, userAgent);
 }
