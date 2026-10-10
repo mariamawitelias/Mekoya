@@ -26,6 +26,7 @@
     "google-auth-library": "^11.2.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^10.1.0",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
     "zod": "^4.6.5"
@@ -36,6 +37,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.4",
+    "@types/nodemailer": "^8.0.2",
     "pino-pretty": "^13.2.0",
     "prisma": "^6.19.3",
     "tsx": "^4.23.15",
