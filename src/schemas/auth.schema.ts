@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-const emailSchema = z.string().trim().toLowerCase().email('Invalid email address').max(254);
+export const emailSchema = z.string().trim().toLowerCase().email('Invalid email address').max(254);
 
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
   .max(72, 'Password must be at most 72 characters')
@@ -35,3 +35,14 @@ export const googleBodySchema = z.object({
 });
 
 export type GoogleBody = z.infer<typeof googleBodySchema>;
+const tokenSchema = z.string().min(20, 'Token is required').max(200);
+
+export const verifyEmailBodySchema = z.object({ token: tokenSchema });
+export const forgotPasswordBodySchema = z.object({ email: emailSchema });
+export const resetPasswordBodySchema = z.object({ token: tokenSchema, newPassword: passwordSchema });
+
+export type VerifyEmailBody = z.infer<typeof verifyEmailBodySchema>;
+export type ForgotPasswordBody = z.infer<typeof forgotPasswordBodySchema>;
+export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;
+export const acceptInviteBodySchema = z.object({ token: tokenSchema, password: passwordSchema });
+export type AcceptInviteBody = z.infer<typeof acceptInviteBodySchema>;

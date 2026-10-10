@@ -16,6 +16,13 @@ import {
   updateServiceBodySchema,
 } from '../schemas/catalog.schema.js';
 import { idParamSchema } from '../schemas/common.schema.js';
+import * as users from '../controllers/user.controller.js';
+import {
+  auditQuerySchema,
+  createStaffBodySchema,
+  listUsersQuerySchema,
+  setUserStatusBodySchema,
+} from '../schemas/user.schema.js';
 
 export const adminRouter = Router();
 
@@ -39,3 +46,11 @@ adminRouter.patch('/offices/:id', requirePermission('office:manage'), validateRe
 adminRouter.delete('/offices/:id', requirePermission('office:manage'), validateRequest({ params: idParamSchema }), admin.deactivateOffice);
 adminRouter.put('/offices/:id/services/:serviceId', requirePermission('office:manage'), validateRequest({ params: officeServiceParamsSchema, body: officeServiceBodySchema }), admin.setOfficeService);
 adminRouter.delete('/offices/:id/services/:serviceId', requirePermission('office:manage'), validateRequest({ params: officeServiceParamsSchema }), admin.removeOfficeService);
+// Users
+adminRouter.post('/users', requirePermission('user:manage'), validateRequest({ body: createStaffBodySchema }), users.createStaff);
+adminRouter.get('/users', requirePermission('user:manage'), validateRequest({ query: listUsersQuerySchema }), users.listUsers);
+adminRouter.patch('/users/:id/status', requirePermission('user:manage'), validateRequest({ params: idParamSchema, body: setUserStatusBodySchema }), users.setUserStatus);
+adminRouter.post('/users/:id/resend-invite', requirePermission('user:manage'), validateRequest({ params: idParamSchema }), users.resendInvite);
+
+// Audit
+adminRouter.get('/audit-logs', requirePermission('audit:read'), validateRequest({ query: auditQuerySchema }), users.getAuditLogs);

@@ -8,13 +8,13 @@ import { generateOpaqueToken, hashToken } from '../utils/tokens.js';
 import { recordAudit } from './audit.service.js';
 import { queueEmail } from './email.service.js';
 
-const TOKEN_TTL_MS: Record<TokenType, number> = {
+export const TOKEN_TTL_MS: Record<TokenType, number> = {
   EMAIL_VERIFY: 24 * 60 * 60 * 1000,
   PASSWORD_RESET: 30 * 60 * 1000,
   OFFICER_INVITE: 72 * 60 * 60 * 1000,
 };
 
-function buildLink(path: string, token: string): string {
+export function buildLink(path: string, token: string): string {
   return `${env.APP_BASE_URL.replace(/\/$/, '')}/${path}?token=${encodeURIComponent(token)}`;
 }
 
@@ -87,7 +87,7 @@ export async function resendVerification(userId: string): Promise<void> {
   await sendVerificationEmail(user, user.profile?.fullName ?? user.email);
 }
 
-// ── Password reset ──
+
 
 export async function requestPasswordReset(email: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { email }, include: { profile: true } });

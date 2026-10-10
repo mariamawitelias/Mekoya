@@ -2,7 +2,8 @@ const BRAND = '#0f766e';
 
 export type EmailMessage =
   | { template: 'WELCOME_VERIFY'; data: { name: string; verifyUrl: string; token: string } }
-  | { template: 'PASSWORD_RESET'; data: { name: string; resetUrl: string; token: string; expiresMinutes: number } };
+  | { template: 'PASSWORD_RESET'; data: { name: string; resetUrl: string; token: string; expiresMinutes: number } }
+  | { template: 'OFFICER_INVITE'; data: { name: string; roleLabel: string; officeName: string | null; inviteUrl: string; token: string; expiresHours: number } };
 
 export interface RenderedEmail {
   subject: string;
@@ -87,7 +88,24 @@ ${codeBlock(token)}
       const text = `Hi ${name},\n\nReset your password: ${resetUrl}\n\nAPI token: ${token}\n\nThis link expires in ${expiresMinutes} minutes. If you did not ask for this, ignore this email.`;
       return { subject, html, text };
     }
-
+        case 'OFFICER_INVITE': {
+            const { name, roleLabel, officeName, inviteUrl, token, expiresHours } = message.data;
+            const subject = 'You have been invited to Mekoya';
+            const where = officeName ? ` at ${officeName}` : '';
+            const html = layout({
+                title: subject,
+                preheader: 'Set your password to activate your staff account.',
+                bodyHtml: `
+        <h1 style="font-size:22px;margin:0 0 16px;">Welcome to the team, ${escapeHtml(name)}</h1>
+        <p>You have been added to Mekoya as <strong>${escapeHtml(roleLabel)}</strong>${escapeHtml(where)}. Set your password to activate your account.</p>
+        ${button(inviteUrl, 'Set my password')}
+        <p style="font-size:14px;color:#52525b;">Using the API directly? Send this token to <code>POST /auth/accept-invite</code>:</p>
+        ${codeBlock(token)}
+        <p style="font-size:14px;color:#52525b;">This invitation expires in ${expiresHours} hours.</p>`,
+            });
+            const text = `Welcome, ${name}!\n\nYou were added to Mekoya as ${roleLabel}${where}.\nSet your password: ${inviteUrl}\n\nAPI token: ${token}\n\nThis invitation expires in ${expiresHours} hours.`;
+            return { subject, html, text };
+        }
     default: {
       const unreachable: never = message;
       throw new Error(`Unhandled email template: ${JSON.stringify(unreachable)}`);

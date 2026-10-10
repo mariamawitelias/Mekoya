@@ -7,6 +7,7 @@ import { issueTokenPair, type UserWithRole, userWithRoleInclude } from './token.
 import { logger } from '../config/logger.js';
 import { hashToken } from '../utils/tokens.js';
 import { type TokenPair } from './token.service.js';
+import { sendVerificationEmail } from './verification.service.js';
 
 export async function register(input: RegisterBody) {
   const role = await prisma.role.findUnique({ where: { name: 'CITIZEN' } });
@@ -16,7 +17,7 @@ export async function register(input: RegisterBody) {
 
   const passwordHash = await hashPassword(input.password);
 
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email: input.email,
       passwordHash,
@@ -36,6 +37,9 @@ export async function register(input: RegisterBody) {
       profile: { select: { fullName: true, preferredLanguage: true } },
     },
   });
+
+  await sendVerificationEmail({ id: user.id, email: user.email }, input.fullName);
+  return user;
 }
 async function startSession(user: UserWithRole, userAgent?: string) {
   const { accessToken, refreshToken } = await issueTokenPair(user, userAgent ? { userAgent } : {});

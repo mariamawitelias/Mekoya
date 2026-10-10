@@ -4,7 +4,7 @@ import { AppError } from '../utils/errors.js';
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  limit: env.NODE_ENV === 'production' ? 20 : 200,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skip: () => env.NODE_ENV === 'test',

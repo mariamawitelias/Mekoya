@@ -1,10 +1,21 @@
 import type { Request, Response } from 'express';
-import type { LoginBody, RegisterBody } from '../schemas/auth.schema.js';
+import type {
+  AcceptInviteBody,
+  ForgotPasswordBody,
+  GoogleBody,
+  LoginBody,
+  RegisterBody,
+  ResetPasswordBody,
+  VerifyEmailBody,
+} from '../schemas/auth.schema.js';
 import * as authService from '../services/auth.service.js';
 import { AppError, UnauthorizedError } from '../utils/errors.js';
 import { clearRefreshCookie, REFRESH_COOKIE_NAME, setRefreshCookie } from '../utils/cookies.js';
 import { ok } from '../utils/response.js';
-import type { GoogleBody } from '../schemas/auth.schema.js';
+import { requireUser } from '../utils/requestUser.js';
+import * as verificationService from '../services/verification.service.js';
+import * as userService from '../services/user.service.js';
+
 export async function register(req: Request, res: Response): Promise<void> {
   const body = req.body as RegisterBody;
   const user = await authService.register(body);
@@ -33,7 +44,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     setRefreshCookie(res, refreshToken);
     ok(res, { accessToken });
   } catch (error) {
-    // A rejected token is useless, so tell the browser to drop it
+
     if (error instanceof AppError) clearRefreshCookie(res);
     throw error;
   }
@@ -57,4 +68,32 @@ export async function google(req: Request, res: Response): Promise<void> {
   const { accessToken, refreshToken, user } = await authService.loginWithGoogle(idToken, req.get('user-agent'));
   setRefreshCookie(res, refreshToken);
   ok(res, { accessToken, user });
+}
+export async function verifyEmail(req: Request, res: Response): Promise<void> {
+  const { token } = req.body as VerifyEmailBody;
+  await verificationService.verifyEmail(token);
+  ok(res, { verified: true });
+}
+
+export async function resendVerification(req: Request, res: Response): Promise<void> {
+  await verificationService.resendVerification(requireUser(req).id);
+  ok(res, { sent: true });
+}
+
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+  const { email } = req.body as ForgotPasswordBody;
+  await verificationService.requestPasswordReset(email);
+  ok(res, { message: 'If that email is registered, a reset link has been sent.' });
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const { token, newPassword } = req.body as ResetPasswordBody;
+  await verificationService.resetPassword(token, newPassword);
+  clearRefreshCookie(res);
+  ok(res, { reset: true });
+}
+export async function acceptInvite(req: Request, res: Response): Promise<void> {
+  const { token, password } = req.body as AcceptInviteBody;
+  await userService.acceptInvite(token, password);
+  ok(res, { activated: true });
 }
