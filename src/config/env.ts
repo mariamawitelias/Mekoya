@@ -16,6 +16,7 @@ const envSchema = z.object({
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
+  ENFORCE_COMPLETION_TIMING: z.enum(['true', 'false']).default('true').transform((value) => value === 'true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

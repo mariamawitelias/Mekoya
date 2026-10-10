@@ -187,7 +187,18 @@ async function upsertUser(input: {
 
   return prisma.user.upsert({
     where: { email: input.email },
-    update: {},
+    update: {
+      passwordHash,
+      emailVerified: true,
+      role: { connect: { id: input.roleId } },
+      office: input.officeId ? { connect: { id: input.officeId } } : { disconnect: true },
+      profile: {
+        upsert: {
+          create: { fullName: input.fullName },
+          update: { fullName: input.fullName },
+        },
+      },
+    },
     create: {
       email: input.email,
       passwordHash,
@@ -218,7 +229,8 @@ async function main() {
   await upsertUser({ email: 'officer.kirkos@mekoya.test', password: demoPassword, fullName: 'Officer Kirkos', roleId: officerRoleId, officeId: 'office-kirkos' });
   await upsertUser({ email: 'citizen1@mekoya.test', password: demoPassword, fullName: 'Sample Citizen One', roleId: citizenRoleId });
   await upsertUser({ email: 'citizen2@mekoya.test', password: demoPassword, fullName: 'Sample Citizen Two', roleId: citizenRoleId });
-
+  await upsertUser({ email: 'citizen3@mekoya.test', password: demoPassword, fullName: 'Sample Citizen Three', roleId: citizenRoleId });
+  await upsertUser({ email: 'citizen4@mekoya.test', password: demoPassword, fullName: 'Sample Citizen Four', roleId: citizenRoleId });
   console.log('Seed complete');
 }
 

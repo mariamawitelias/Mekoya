@@ -11,7 +11,8 @@ import { healthRouter } from './routes/health.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { catalogRouter } from './routes/catalog.routes.js';
-
+import { appointmentRouter } from './routes/appointment.routes.js';
+import { officerRouter } from './routes/officer.routes.js';
 export const app = express();
 
 app.use(helmet());
@@ -23,6 +24,8 @@ app.use(cookieParser());
 app.use('/api/v1/health', healthRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/officer', officerRouter);
+app.use('/api/v1', appointmentRouter);
 app.use('/api/v1', catalogRouter);
 app.use('/api/v1/catalog', catalogRouter);
 app.use(notFoundHandler);

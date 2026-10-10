@@ -1,9 +1,25 @@
+import { APPOINTMENT_RULES } from '../config/appointmentRules.js';
+
 const BRAND = '#0f766e';
 
 export type EmailMessage =
   | { template: 'WELCOME_VERIFY'; data: { name: string; verifyUrl: string; token: string } }
   | { template: 'PASSWORD_RESET'; data: { name: string; resetUrl: string; token: string; expiresMinutes: number } }
-  | { template: 'OFFICER_INVITE'; data: { name: string; roleLabel: string; officeName: string | null; inviteUrl: string; token: string; expiresHours: number } };
+  | { template: 'OFFICER_INVITE'; data: { name: string; roleLabel: string; officeName: string | null; inviteUrl: string; token: string; expiresHours: number } }
+  | {
+      template: 'APPOINTMENT_CONFIRMATION';
+      data: {
+        name: string;
+        serviceName: string;
+        officeName: string;
+        address: string | null;
+        date: string;
+        time: string;
+        mandatoryDocs: string[];
+        optionalDocs: string[];
+        isReschedule: boolean;
+      };
+    };
 
 export interface RenderedEmail {
   subject: string;
@@ -51,6 +67,16 @@ function codeBlock(value: string): string {
   return `<p style="margin:8px 0;padding:10px;background:#f4f4f5;border-radius:4px;font-family:Consolas,monospace;font-size:13px;word-break:break-all;">${escapeHtml(value)}</p>`;
 }
 
+function docList(items: string[], label: string): string {
+  if (!items.length) {
+    return `<p style="margin:8px 0;color:#52525b;">No ${label} required.</p>`;
+  }
+
+  return `<ul style="margin:8px 0 16px;padding-left:20px;">${items
+    .map((item) => `<li>${escapeHtml(item)}</li>`)
+    .join('')}</ul>`;
+}
+
 export function renderEmail(message: EmailMessage): RenderedEmail {
   switch (message.template) {
     case 'WELCOME_VERIFY': {
@@ -88,24 +114,70 @@ ${codeBlock(token)}
       const text = `Hi ${name},\n\nReset your password: ${resetUrl}\n\nAPI token: ${token}\n\nThis link expires in ${expiresMinutes} minutes. If you did not ask for this, ignore this email.`;
       return { subject, html, text };
     }
-        case 'OFFICER_INVITE': {
-            const { name, roleLabel, officeName, inviteUrl, token, expiresHours } = message.data;
-            const subject = 'You have been invited to Mekoya';
-            const where = officeName ? ` at ${officeName}` : '';
-            const html = layout({
-                title: subject,
-                preheader: 'Set your password to activate your staff account.',
-                bodyHtml: `
-        <h1 style="font-size:22px;margin:0 0 16px;">Welcome to the team, ${escapeHtml(name)}</h1>
-        <p>You have been added to Mekoya as <strong>${escapeHtml(roleLabel)}</strong>${escapeHtml(where)}. Set your password to activate your account.</p>
-        ${button(inviteUrl, 'Set my password')}
-        <p style="font-size:14px;color:#52525b;">Using the API directly? Send this token to <code>POST /auth/accept-invite</code>:</p>
-        ${codeBlock(token)}
-        <p style="font-size:14px;color:#52525b;">This invitation expires in ${expiresHours} hours.</p>`,
-            });
-            const text = `Welcome, ${name}!\n\nYou were added to Mekoya as ${roleLabel}${where}.\nSet your password: ${inviteUrl}\n\nAPI token: ${token}\n\nThis invitation expires in ${expiresHours} hours.`;
-            return { subject, html, text };
-        }
+
+    case 'OFFICER_INVITE': {
+      const { name, roleLabel, officeName, inviteUrl, token, expiresHours } = message.data;
+      const subject = 'You have been invited to Mekoya';
+      const where = officeName ? ` at ${officeName}` : '';
+      const html = layout({
+        title: subject,
+        preheader: 'Set your password to activate your staff account.',
+        bodyHtml: `
+<h1 style="font-size:22px;margin:0 0 16px;">Welcome to the team, ${escapeHtml(name)}</h1>
+<p>You have been added to Mekoya as <strong>${escapeHtml(roleLabel)}</strong>${escapeHtml(where)}. Set your password to activate your account.</p>
+${button(inviteUrl, 'Set my password')}
+<p style="font-size:14px;color:#52525b;">Using the API directly? Send this token to <code>POST /auth/accept-invite</code>:</p>
+${codeBlock(token)}
+<p style="font-size:14px;color:#52525b;">This invitation expires in ${expiresHours} hours.</p>`,
+      });
+      const text = `Welcome, ${name}!\n\nYou were added to Mekoya as ${roleLabel}${where}.\nSet your password: ${inviteUrl}\n\nAPI token: ${token}\n\nThis invitation expires in ${expiresHours} hours.`;
+      return { subject, html, text };
+    }
+
+    case 'APPOINTMENT_CONFIRMATION': {
+        const d = message.data;
+        const subject = d.isReschedule ? 'Your Mekoya appointment was rescheduled' : 'Your Mekoya appointment is booked';
+        const items = (list: string[]): string => list.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+        const row = (label: string, value: string): string =>
+        `<tr><td style="padding:4px 16px 4px 0;color:#52525b;">${label}</td><td style="padding:4px 0;"><strong>${escapeHtml(value)}</strong></td></tr>`;
+        const cutoff = APPOINTMENT_RULES.cancelCutoffHours;
+
+        const html = layout({
+            title: subject,
+            preheader: `${d.serviceName} on ${d.date} at ${d.time}`,
+            bodyHtml: `
+    <h1 style="font-size:22px;margin:0 0 16px;">${d.isReschedule ? 'Appointment rescheduled' : 'Appointment booked'}</h1>
+    <p>Hi ${escapeHtml(d.name)}, here are your appointment details:</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:16px;">
+    ${row('Service', d.serviceName)}
+    ${row('Office', d.officeName)}
+    ${d.address ? row('Address', d.address) : ''}
+    ${row('Date', d.date)}
+    ${row('Time', `${d.time} (Addis Ababa time)`)}
+    </table>
+    <p><strong>Please upload these documents before your visit:</strong></p>
+    <ul>${items(d.mandatoryDocs)}</ul>
+    ${d.optionalDocs.length > 0 ? `<p>Optional:</p><ul>${items(d.optionalDocs)}</ul>` : ''}
+    <p style="font-size:14px;color:#52525b;">You can cancel or reschedule up to ${cutoff} hours before your appointment.</p>`,
+        });
+
+      const text = [
+        `Hi ${d.name},`,
+        '',
+        d.isReschedule ? 'Your appointment was rescheduled.' : 'Your appointment is booked.',
+        `Service: ${d.serviceName}`,
+        `Office: ${d.officeName}${d.address ? `, ${d.address}` : ''}`,
+        `When: ${d.date} ${d.time} (Addis Ababa time)`,
+        '',
+        'Documents to upload before your visit:',
+        ...d.mandatoryDocs.map((doc) => `- ${doc}`),
+        ...(d.optionalDocs.length > 0 ? ['Optional:', ...d.optionalDocs.map((doc) => `- ${doc}`)] : []),
+        '',
+        `You can cancel or reschedule up to ${cutoff} hours before.`,
+      ].join('\n');
+
+      return { subject, html, text };
+    }
     default: {
       const unreachable: never = message;
       throw new Error(`Unhandled email template: ${JSON.stringify(unreachable)}`);
