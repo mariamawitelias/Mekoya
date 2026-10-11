@@ -17,6 +17,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   ENFORCE_COMPLETION_TIMING: z.enum(['true', 'false']).default('true').transform((value) => value === 'true'),
+  UPLOAD_DIR: z.string().min(1).default('uploads'),
 });
 
 const parsed = envSchema.safeParse(process.env);

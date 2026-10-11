@@ -4,3 +4,5 @@ node_modules
 .last-email
 .last-staff
 /generated/prisma
+uploads/
+
