@@ -13,6 +13,8 @@ import { adminRouter } from './routes/admin.routes.js';
 import { catalogRouter } from './routes/catalog.routes.js';
 import { appointmentRouter } from './routes/appointment.routes.js';
 import { officerRouter } from './routes/officer.routes.js';
+import { documentRouter } from './routes/document.routes.js';
+
 export const app = express();
 
 app.use(helmet());
@@ -28,5 +30,6 @@ app.use('/api/v1/officer', officerRouter);
 app.use('/api/v1', appointmentRouter);
 app.use('/api/v1', catalogRouter);
 app.use('/api/v1/catalog', catalogRouter);
+app.use('/api/v1', documentRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);

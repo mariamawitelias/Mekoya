@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { logger } from '../config/logger.js';
 import { AppError } from '../utils/errors.js';
+import multer from 'multer';
+import { MAX_FILE_MB } from '../config/upload.js';
 
 interface ErrorBody {
   code: string;
@@ -26,6 +28,17 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (err instanceof AppError) {
     status = err.statusCode;
     error = { code: err.code, message: err.message, details: err.details };
+  } else if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      status = 413;
+      error = { code: 'FILE_TOO_LARGE', message: `The file is too large. The maximum size is ${MAX_FILE_MB} MB` };
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      status = 400;
+      error = { code: 'UNEXPECTED_FILE_FIELD', message: 'Upload exactly one file in a form field named "file"' };
+    } else {
+      status = 400;
+      error = { code: 'UPLOAD_ERROR', message: err.message };
+    }
   } else if (err instanceof ZodError) {
     status = 400;
     error = {
