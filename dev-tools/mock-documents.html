@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mock documents for AI testing</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #e5e7eb; margin: 0; padding: 24px; }
+  h2 { margin: 28px 0 8px; }
+  .shot { display: inline-block; padding: 16px; background: #fff; }
+  .clip { overflow: hidden; }
+  .card { width: 540px; height: 340px; box-sizing: border-box; padding: 18px; position: relative;
+          background: linear-gradient(135deg, #fef9c3, #bbf7d0); border: 2px solid #166534; border-radius: 14px; }
+  .card h1 { margin: 0 0 14px; font-size: 20px; color: #14532d; letter-spacing: 1px; }
+  .photo { position: absolute; right: 24px; top: 64px; width: 120px; height: 150px; background: #d1d5db; border: 1px solid #6b7280; overflow: hidden; }
+  .head { width: 52px; height: 52px; background: #9ca3af; border-radius: 50%; margin: 28px auto 6px; }
+  .body { width: 96px; height: 70px; background: #9ca3af; border-radius: 48px 48px 0 0; margin: 0 auto; }
+  .row { margin: 7px 0; font-size: 15px; color: #111827; }
+  .row b { display: inline-block; width: 110px; color: #374151; }
+  .tag { position: absolute; left: 18px; bottom: 12px; font-size: 11px; color: #6b7280; }
+  .blur { filter: blur(5px); }
+  .receipt { width: 360px; background: #fff; border: 1px dashed #6b7280; padding: 18px; font-family: monospace; font-size: 14px; }
+</style>
+</head>
+<body>
+<h2>1. Clear ID card</h2>
+<div class="shot"><div id="clear"></div></div>
+
+<h2>2. Blurry ID card</h2>
+<div class="shot"><div id="blurry" class="blur"></div></div>
+
+<h2>3. Cropped ID card (right half cut off)</h2>
+<div class="shot"><div class="clip" style="width:300px"><div id="cropped"></div></div></div>
+
+<h2>4. Driver's license with a past expiry date</h2>
+<div class="shot"><div id="expired"></div></div>
+
+<h2>5. Wrong document (a shop receipt)</h2>
+<div class="shot">
+  <div class="receipt">
+    SAMPLE GROCERY SHOP<br>------------------------<br>Bread ........ 25.00<br>Milk ......... 60.00<br>Coffee ...... 120.00<br>------------------------<br>TOTAL ....... 205.00
+  </div>
+</div>
+
+<script>
+  function card(title, label, name, number, birth, expiry) {
+    return `<div class="card">
+      <h1>${title}</h1>
+      <div class="photo"><div class="head"></div><div class="body"></div></div>
+      <div class="row"><b>Full name</b>${name}</div>
+      <div class="row"><b>${label}</b>${number}</div>
+      <div class="row"><b>Date of birth</b>${birth}</div>
+      <div class="row"><b>Expiry date</b>${expiry}</div>
+      <div class="tag">SPECIMEN - fictional data for software testing</div>
+    </div>`;
+  }
+  const idArgs = ['SAMPLE IDENTITY CARD', 'ID number', 'Abebe Test Kebede', 'TEST-0000-1234', '01 Jan 1990', '01 Jan 2032'];
+  document.getElementById('clear').innerHTML = card(...idArgs);
+  document.getElementById('blurry').innerHTML = card(...idArgs);
+  document.getElementById('cropped').innerHTML = card(...idArgs);
+  document.getElementById('expired').innerHTML = card(
+    "SAMPLE DRIVER'S LICENSE", 'License no.', 'Abebe Test Kebede', 'DL-TEST-5678', '01 Jan 1990', '15 Mar 2019');
+</script>
+</body>
+</html>

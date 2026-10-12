@@ -368,7 +368,11 @@ export async function listMyAppointments(userId: string, query: MyAppointmentsQu
   const upcoming = query.upcoming === 'true';
   const where: Prisma.AppointmentWhereInput = {
     userId,
-    ...(query.status ? { status: query.status } : {}),
+    ...(query.status
+      ? { status: query.status }
+      : upcoming
+        ? { status: { in: OPEN_STATUSES } }
+        : {}),
     ...(upcoming ? { slotStart: { gte: new Date() } } : {}),
   };
 

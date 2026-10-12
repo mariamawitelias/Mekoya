@@ -8,9 +8,12 @@ export interface ReviewDecision {
 }
 
 export function decideReview(observation: DocumentObservation): ReviewDecision {
-  const problems: string[] = [];
-  if (!observation.documentTypeMatches) problems.push('This does not look like the requested document');
-  if (!observation.isLegible) problems.push('The document is not clearly readable. Please upload a sharper, well-lit scan or photo');
+    const problems: string[] = [];
+  if (!observation.isLegible) {
+    problems.push('The document is not clearly readable. Please upload a sharper, well-lit scan or photo');
+  } else if (!observation.documentTypeMatches) {
+    problems.push('This does not look like the requested document');
+  }
   if (!observation.isComplete) problems.push('The document appears cut off or incomplete');
   if (observation.isExpired === true) problems.push('The document appears to be expired');
 

@@ -6,3 +6,4 @@ node_modules
 /generated/prisma
 uploads/
 dev-tools/.tmp/
+dev-tools/samples/
