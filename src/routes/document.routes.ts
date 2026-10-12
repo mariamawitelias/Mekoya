@@ -27,3 +27,10 @@ documentRouter.get(
   validateRequest({ params: idParamSchema }),
   controller.download, 
 );
+documentRouter.post(
+  '/documents/:id/appeal',
+  authenticate,
+  requirePermission('document:upload'),
+  validateRequest({ params: idParamSchema }),
+  controller.appeal,
+);

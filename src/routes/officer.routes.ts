@@ -6,6 +6,7 @@ import { requirePermission } from '../middlewares/requirePermission.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
 import { completeBodySchema, officerQueueQuerySchema } from '../schemas/appointment.schema.js';
 import { idParamSchema } from '../schemas/common.schema.js';
+import { officerDocumentsQuerySchema, reviewDocumentBodySchema } from '../schemas/document.schema.js';
 
 export const officerRouter = Router();
 
@@ -40,4 +41,17 @@ officerRouter.patch(
   validateRequest({ params: idParamSchema }),
   requireOfficeScope,
   controller.noShow,
+);
+officerRouter.get(
+  '/documents',
+  requirePermission('document:review'),
+  validateRequest({ query: officerDocumentsQuerySchema }),
+  controller.listDocuments,
+);
+
+officerRouter.patch(
+  '/documents/:id/review',
+  requirePermission('document:review'),
+  validateRequest({ params: idParamSchema, body: reviewDocumentBodySchema }),
+  controller.reviewDocument,
 );

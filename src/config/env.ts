@@ -18,6 +18,10 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   ENFORCE_COMPLETION_TIMING: z.enum(['true', 'false']).default('true').transform((value) => value === 'true'),
   UPLOAD_DIR: z.string().min(1).default('uploads'),
+  AI_PROVIDER: z.enum(['mock', 'gemini']).default('mock'),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  AI_REVIEW_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
 });
 
 const parsed = envSchema.safeParse(process.env);

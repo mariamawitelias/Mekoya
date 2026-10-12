@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createReadStream, type ReadStream } from 'node:fs';
-import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { env } from '../config/env.js';
 
@@ -8,6 +8,7 @@ export interface StorageDriver {
   save(data: Buffer, extension: string): Promise<string>; // returns the storage key
   open(key: string): Promise<{ stream: ReadStream; size: number } | null>;
   remove(key: string): Promise<void>;
+  read(key: string): Promise<Buffer | null>;
 }
 
 const KEY_PATTERN = /^[0-9a-f-]{36}\.(jpg|png|pdf)$/;
@@ -45,6 +46,14 @@ class LocalStorage implements StorageDriver {
       await unlink(this.resolveKey(key));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+    async read(key: string): Promise<Buffer | null> {
+    try {
+      return await readFile(this.resolveKey(key));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw error;
     }
   }
 }

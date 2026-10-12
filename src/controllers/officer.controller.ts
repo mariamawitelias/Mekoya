@@ -7,6 +7,9 @@ import { ForbiddenError } from '../utils/errors.js';
 import { getLanguage } from '../utils/language.js';
 import { requireUser } from '../utils/requestUser.js';
 import { ok } from '../utils/response.js';
+import { officerDocumentsQuerySchema } from '../schemas/document.schema.js';
+import type { ReviewDocumentBody } from '../schemas/document.schema.js';
+import * as reviewService from '../services/documentReview.service.js';
 
 function getRequiredParamId(req: Request, paramName: string): string {
   const value = req.params[paramName];
@@ -46,4 +49,20 @@ export async function complete(req: Request, res: Response): Promise<void> {
 export async function noShow(req: Request, res: Response): Promise<void> {
   const appointmentId = getRequiredParamId(req, 'id');
   ok(res, await officerService.markNoShow(appointmentId, requireUser(req)));
+}
+export async function listDocuments(req: Request, res: Response): Promise<void> {
+  const officer = requireUser(req);
+  if (!officer.officeId) throw new ForbiddenError('You are not assigned to an office');
+
+  const { items, meta } = await reviewService.listOfficerDocuments(
+    officer.officeId,
+    officerDocumentsQuerySchema.parse(req.query),
+    getLanguage(req),
+  );
+  ok(res, items, 200, meta);
+}
+
+export async function reviewDocument(req: Request, res: Response): Promise<void> {
+  const documentId = getRequiredParamId(req, 'id');
+  ok(res, await reviewService.officerReviewDocument(documentId, requireUser(req), req.body as ReviewDocumentBody));
 }

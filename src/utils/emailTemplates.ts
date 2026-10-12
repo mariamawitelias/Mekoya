@@ -19,6 +19,10 @@ export type EmailMessage =
         optionalDocs: string[];
         isReschedule: boolean;
       };
+    }
+  | {
+      template: 'DOCUMENT_REJECTED';
+      data: { name: string; serviceName: string; documentName: string; reason: string; date: string; time: string };
     };
 
 export interface RenderedEmail {
@@ -176,6 +180,21 @@ ${codeBlock(token)}
         `You can cancel or reschedule up to ${cutoff} hours before.`,
       ].join('\n');
 
+      return { subject, html, text };
+    }
+        case 'DOCUMENT_REJECTED': {
+      const d = message.data;
+      const subject = `Action needed: please upload your ${d.documentName} again`;
+      const html = layout({
+        title: subject,
+        preheader: `Your ${d.documentName} could not be accepted.`,
+        bodyHtml: `
+<h1 style="font-size:22px;margin:0 0 16px;">A document needs your attention</h1>
+<p>Hi ${escapeHtml(d.name)}, we could not accept your <strong>${escapeHtml(d.documentName)}</strong> for ${escapeHtml(d.serviceName)}.</p>
+<p style="padding:12px;background:#fef2f2;border-radius:6px;"><strong>Reason:</strong> ${escapeHtml(d.reason)}</p>
+<p>Your appointment is on <strong>${escapeHtml(d.date)} at ${escapeHtml(d.time)}</strong>. Please upload a new copy before then. If you believe this is a mistake, you can ask for a review by an officer.</p>`,
+      });
+      const text = `Hi ${d.name},\n\nWe could not accept your ${d.documentName} for ${d.serviceName}.\nReason: ${d.reason}\n\nYour appointment: ${d.date} ${d.time}. Please upload a new copy before then. If you think this is a mistake, you can ask for a review by an officer.`;
       return { subject, html, text };
     }
     default: {

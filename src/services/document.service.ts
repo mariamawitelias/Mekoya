@@ -10,6 +10,7 @@ import { detectFileType } from '../utils/fileType.js';
 import { recordAudit } from './audit.service.js';
 import { syncAppointmentStatus } from './appointmentStatus.service.js';
 import { storage } from './storage.service.js';
+import { queueReview } from './documentReview.service.js';
 
 const APPROVED: DocumentStatus[] = ['AI_APPROVED', 'OFFICER_APPROVED'];
 const TX_OPTIONS = { maxWait: 5_000, timeout: 10_000 };
@@ -30,7 +31,6 @@ export async function uploadDocument(input: UploadInput) {
   const { file, actor } = input;
   if (!file) throw new AppError(400, 'FILE_REQUIRED', 'Attach a file in the "file" form field');
 
-  // 1. Check the real content, not just what the client claimed
   const detected = detectFileType(file.buffer);
   if (!detected) {
     throw new AppError(415, 'UNSUPPORTED_FILE_TYPE', 'The file content is not a valid JPEG, PNG or PDF');
@@ -61,9 +61,9 @@ export async function uploadDocument(input: UploadInput) {
   if (!checklistItem) throw new NotFoundError('That checklist item does not belong to this appointment');
 
   const key = await storage.save(file.buffer, detected.extension);
-
+  let result;
   try {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`doc:${appointment.id}:${checklistItem.id}`}))`;
 
       const fresh = await tx.appointment.findUnique({ where: { id: appointment.id }, select: { status: true } });
@@ -121,12 +121,18 @@ export async function uploadDocument(input: UploadInput) {
         appointmentStatus,
       };
     }, TX_OPTIONS);
+
+    queueReview(result.document.id); // after the commit, so the review can always find the row
+    return result;
   } catch (error) {
     await storage.remove(key).catch((cleanupError: unknown) => {
       logger.error({ err: cleanupError, key }, 'Could not remove an orphaned upload');
     });
     throw error;
   }
+
+  queueReview(result.document.id); // after the commit, so the review can always find the row
+  return result;
 }
 
 export async function openDocumentFile(id: string, actor: AuthUser) {
