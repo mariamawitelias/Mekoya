@@ -22,6 +22,8 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   AI_REVIEW_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+  ENABLE_SCHEDULER: z.enum(['true', 'false']).default('true').transform((value) => value === 'true'),
+  REMINDER_HOURS_BEFORE: z.coerce.number().int().min(1).max(168).default(24),
 });
 
 const parsed = envSchema.safeParse(process.env);

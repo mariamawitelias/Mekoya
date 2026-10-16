@@ -3,6 +3,7 @@ import { AI_REVIEW } from '../config/aiReview.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { type DocumentObservation, documentObservationSchema } from '../schemas/aiReview.schema.js';
+import type { z } from 'zod';
 
 export interface ReviewInput {
   data: Buffer;
@@ -176,6 +177,80 @@ export async function analyzeDocument(input: ReviewInput): Promise<AnalysisResul
         logger.warn({ attempt, provider: reviewer.name, error: lastError }, 'AI review attempt failed');
       }
     }
+    return { ok: false, error: lastError };
+  } finally {
+    releaseSlot();
+  }
+}
+
+export interface StructuredParams<T> {
+  system: string;
+  user: string;
+  schema: z.ZodType<T>;
+  timeoutMs?: number;
+  maxAttempts?: number;
+}
+
+export type StructuredResult<T> = { ok: true; data: T; provider: string } | { ok: false; error: string };
+type StructuredGenerator = <T>(params: StructuredParams<T>) => Promise<StructuredResult<T>>;
+
+let structuredOverride: StructuredGenerator | undefined;
+let geminiClient: GoogleGenAI | undefined;
+
+export function setStructuredGeneratorForTests(generator: StructuredGenerator | undefined): void {
+  structuredOverride = generator;
+}
+
+
+const BREAKER_OPEN_MS = 60_000;
+let breakerOpenUntil = 0;
+
+export function resetAiBreakerForTests(): void {
+  breakerOpenUntil = 0;
+}
+
+export async function generateStructured<T>(params: StructuredParams<T>): Promise<StructuredResult<T>> {
+  if (structuredOverride) return structuredOverride(params);
+  if (env.NODE_ENV === 'test' || env.AI_PROVIDER === 'mock') return { ok: false, error: 'AI provider is in mock mode' };
+  if (!env.GEMINI_API_KEY) return { ok: false, error: 'AI provider is not configured' };
+
+  geminiClient ??= new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  const client = geminiClient;
+  const timeoutMs = params.timeoutMs ?? env.AI_REVIEW_TIMEOUT_MS;
+  const maxAttempts = params.maxAttempts ?? AI_REVIEW.maxAttempts;
+
+  await acquireSlot();
+  try {
+    if (Date.now() < breakerOpenUntil) {
+      return { ok: false, error: 'AI temporarily unavailable (circuit open)' };
+    }
+
+    let lastError = 'Unknown AI error';
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const delay = AI_REVIEW.retryDelaysMs[attempt - 1] ?? 0;
+      if (delay > 0) await sleep(delay);
+
+      try {
+        const response = await withTimeout(
+          client.models.generateContent({
+            model: env.GEMINI_MODEL,
+            contents: [{ role: 'user', parts: [{ text: params.user }] }],
+            config: { systemInstruction: params.system, responseMimeType: 'application/json', temperature: 0 },
+          }),
+          timeoutMs,
+        );
+        const text = (response.text ?? '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+        const data = params.schema.parse(JSON.parse(text));
+        breakerOpenUntil = 0; // healthy again
+        return { ok: true, data, provider: 'gemini' };
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
+        logger.warn({ attempt, error: lastError }, 'AI text task attempt failed');
+      }
+    }
+
+    breakerOpenUntil = Date.now() + BREAKER_OPEN_MS;
+    logger.warn({ seconds: BREAKER_OPEN_MS / 1000 }, 'AI circuit opened: using the fallback for a while');
     return { ok: false, error: lastError };
   } finally {
     releaseSlot();

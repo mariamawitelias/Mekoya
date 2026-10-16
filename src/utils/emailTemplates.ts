@@ -23,6 +23,18 @@ export type EmailMessage =
   | {
       template: 'DOCUMENT_REJECTED';
       data: { name: string; serviceName: string; documentName: string; reason: string; date: string; time: string };
+    }
+    | {
+      template: 'APPOINTMENT_REMINDER';
+      data: {
+        name: string;
+        serviceName: string;
+        officeName: string;
+        address: string | null;
+        date: string;
+        time: string;
+        missingDocs: string[];
+      };
     };
 
 export interface RenderedEmail {
@@ -195,6 +207,38 @@ ${codeBlock(token)}
 <p>Your appointment is on <strong>${escapeHtml(d.date)} at ${escapeHtml(d.time)}</strong>. Please upload a new copy before then. If you believe this is a mistake, you can ask for a review by an officer.</p>`,
       });
       const text = `Hi ${d.name},\n\nWe could not accept your ${d.documentName} for ${d.serviceName}.\nReason: ${d.reason}\n\nYour appointment: ${d.date} ${d.time}. Please upload a new copy before then. If you think this is a mistake, you can ask for a review by an officer.`;
+      return { subject, html, text };
+    }
+        case 'APPOINTMENT_REMINDER': {
+      const d = message.data;
+      const subject = `Reminder: your appointment on ${d.date} at ${d.time}`;
+      const items = d.missingDocs.map((doc) => `<li>${escapeHtml(doc)}</li>`).join('');
+      const docsHtml =
+        d.missingDocs.length > 0
+          ? `<p style="padding:12px;background:#fef2f2;border-radius:6px;"><strong>Documents still missing:</strong></p><ul>${items}</ul><p>Please upload them before your visit.</p>`
+          : '<p style="padding:12px;background:#f0fdf4;border-radius:6px;">All your required documents are in order.</p>';
+
+      const html = layout({
+        title: subject,
+        preheader: `${d.serviceName} at ${d.officeName}`,
+        bodyHtml: `
+<h1 style="font-size:22px;margin:0 0 16px;">Your appointment is coming up</h1>
+<p>Hi ${escapeHtml(d.name)}, this is a reminder for your <strong>${escapeHtml(d.serviceName)}</strong> appointment.</p>
+<p><strong>${escapeHtml(d.date)} at ${escapeHtml(d.time)}</strong> (Addis Ababa time)<br>${escapeHtml(d.officeName)}${d.address ? `, ${escapeHtml(d.address)}` : ''}</p>
+${docsHtml}`,
+      });
+
+      const text = [
+        `Hi ${d.name},`,
+        '',
+        `Reminder: ${d.serviceName} on ${d.date} at ${d.time} (Addis Ababa time).`,
+        `Office: ${d.officeName}${d.address ? `, ${d.address}` : ''}`,
+        '',
+        d.missingDocs.length > 0
+          ? `Documents still missing:\n${d.missingDocs.map((doc) => `- ${doc}`).join('\n')}\nPlease upload them before your visit.`
+          : 'All your required documents are in order.',
+      ].join('\n');
+
       return { subject, html, text };
     }
     default: {

@@ -7,3 +7,5 @@ node_modules
 uploads/
 dev-tools/.tmp/
 dev-tools/samples/
+.env.test
+uploads-test/

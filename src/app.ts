@@ -14,12 +14,21 @@ import { catalogRouter } from './routes/catalog.routes.js';
 import { appointmentRouter } from './routes/appointment.routes.js';
 import { officerRouter } from './routes/officer.routes.js';
 import { documentRouter } from './routes/document.routes.js';
+import { aiRouter } from './routes/ai.routes.js';
 
 export const app = express();
 
 app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
-app.use(pinoHttp({ logger }));
+app.use(
+  pinoHttp({
+    logger,
+    serializers: {
+      req: (req: { id: unknown; method: string; url: string }) => ({ id: req.id, method: req.method, url: req.url }),
+      res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
+    },
+  }),
+);
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
@@ -31,5 +40,6 @@ app.use('/api/v1', appointmentRouter);
 app.use('/api/v1', catalogRouter);
 app.use('/api/v1/catalog', catalogRouter);
 app.use('/api/v1', documentRouter);
+app.use('/api/v1/ai', aiRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);

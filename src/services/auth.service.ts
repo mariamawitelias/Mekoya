@@ -69,8 +69,6 @@ export async function login(input: LoginBody, userAgent?: string) {
     throw new ForbiddenError('This account has been deactivated');
   }
 
-  const tokens = await issueTokenPair(user, userAgent ? { userAgent } : {});
-
   return startSession(user, userAgent);
 }
 async function revokeFamily(familyId: string): Promise<number> {
