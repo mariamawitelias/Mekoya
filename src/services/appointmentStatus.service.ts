@@ -5,6 +5,7 @@ import { recordAudit } from './audit.service.js';
 const APPROVED: DocumentStatus[] = ['AI_APPROVED', 'OFFICER_APPROVED'];
 
 export async function syncAppointmentStatus(db: DbClient, appointmentId: string): Promise<AppointmentStatus | null> {
+  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`appt-sync:${appointmentId}`}))`;
   const appointment = await db.appointment.findUnique({
     where: { id: appointmentId },
     select: { status: true, serviceId: true },

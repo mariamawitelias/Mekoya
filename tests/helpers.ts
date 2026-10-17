@@ -3,6 +3,8 @@ import request, { type Response } from 'supertest';
 import { app } from '../src/app.js';
 import { prisma } from '../src/config/prisma.js';
 import { DAY_MS, isWorkingDay, toAddisDate } from '../src/utils/time.js';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
+import path from 'node:path';
 
 export const http = () => request(app);
 
@@ -61,6 +63,7 @@ export async function cleanTransactionalData(): Promise<void> {
   await prisma.$executeRawUnsafe(
     'TRUNCATE TABLE "Appointment", "DocumentSubmission", "RefreshToken", "VerificationToken", "EmailLog", "AuditLog" RESTART IDENTITY CASCADE',
   );
+    rmSync(path.resolve(process.env.UPLOAD_DIR ?? 'uploads'), { recursive: true, force: true });
 }
 
 export async function waitFor(check: () => Promise<boolean>, timeoutMs = 8_000): Promise<void> {
@@ -91,4 +94,42 @@ export interface BookingBody {
 
 export function bookingBody(overrides: Partial<BookingBody> = {}): BookingBody {
   return { officeId: 'office-bole', serviceId: 'svc-license-renewal', date: futureWorkday(), time: '08:30', ...overrides };
+}
+export const auth = (session: Session) => ({ Authorization: bearer(session.token) });
+export const PNG_BYTES = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64',
+);
+export const JPEG_BYTES = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(32)]);
+export const PDF_BYTES = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n');
+
+export function uploadedFiles(): string[] {
+  const dir = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');
+  return existsSync(dir) ? readdirSync(dir) : [];
+}
+
+export async function bookFor(session: Session, overrides: Partial<BookingBody> = {}): Promise<string> {
+  const res = await http().post('/api/v1/appointments').set(auth(session)).send(bookingBody(overrides));
+  if (res.status !== 201) throw new Error(`Booking failed: ${res.status} ${JSON.stringify(res.body)}`);
+  return res.body.data.id as string;
+}
+
+export async function checklistOf(session: Session, appointmentId: string) {
+  const res = await http().get(`/api/v1/appointments/${appointmentId}`).set(auth(session));
+  return res.body.data.checklist as Array<{ id: string; name: string; isMandatory: boolean }>;
+}
+
+export function upload(
+  session: Session,
+  appointmentId: string,
+  itemId: string,
+  filename: string,
+  content: Buffer = PNG_BYTES,
+  contentType = 'image/png',
+) {
+  return http()
+    .post(`/api/v1/appointments/${appointmentId}/documents`)
+    .set(auth(session))
+    .field('serviceRequirementId', itemId)
+    .attach('file', content, { filename, contentType });
 }

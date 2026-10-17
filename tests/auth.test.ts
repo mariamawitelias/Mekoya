@@ -148,10 +148,10 @@ describe('refresh token rotation', () => {
     const rotated = await refresh(first);
     const second = cookieFrom(rotated);
 
-    const replay = await refresh(first); // an attacker (or a stale client) replays the old token
+    const replay = await refresh(first);
     expect(replay.status).toBe(401);
 
-    const legitimate = await refresh(second); // even the newest token is now dead
+    const legitimate = await refresh(second);
     expect(legitimate.status).toBe(401);
 
     const tokens = await prisma.refreshToken.findMany({ where: { userId } });

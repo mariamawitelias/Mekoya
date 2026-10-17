@@ -119,7 +119,7 @@ describe('booking rules', () => {
 
 describe('slot capacity', () => {
   it('never books more people than the slot capacity, even under simultaneous requests', async () => {
-    const body = bookingBody({ time: '14:00' }); // capacity is 3, and four different citizens try at once
+    const body = bookingBody({ time: '14:00' });
     const results = await Promise.all([citizen1, citizen2, citizen3, citizen4].map((session) => book(session, body)));
 
     expect(results.map((res) => res.status).sort()).toEqual([201, 201, 201, 409]);
@@ -225,7 +225,7 @@ describe('officer office scope (ABAC)', () => {
     const complete = (session: Session) =>
       http().patch(`/api/v1/officer/appointments/${id}/complete`).set(as(session)).send({ closureNote: 'Checked at the counter' });
 
-    const tooSoon = await complete(officerBole); // still BOOKED: the documents are not approved
+    const tooSoon = await complete(officerBole);
     expect(tooSoon.status).toBe(409);
 
     await prisma.appointment.update({ where: { id }, data: { status: 'CONFIRMED' } });

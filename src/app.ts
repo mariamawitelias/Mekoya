@@ -15,9 +15,22 @@ import { appointmentRouter } from './routes/appointment.routes.js';
 import { officerRouter } from './routes/officer.routes.js';
 import { documentRouter } from './routes/document.routes.js';
 import { aiRouter } from './routes/ai.routes.js';
+import swaggerUi from 'swagger-ui-express';
+import { openApiDocument } from './docs/openapi.js';
 
 export const app = express();
-
+app.get('/api/docs.json', (_req, res) => {
+  res.json(openApiDocument);
+});
+app.use(
+  '/api/docs',
+  helmet({ contentSecurityPolicy: false }),
+  swaggerUi.serve,
+  swaggerUi.setup(openApiDocument, {
+    customSiteTitle: 'Mekoya API docs',
+    swaggerOptions: { persistAuthorization: true, displayRequestDuration: true },
+  }),
+);
 app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(
