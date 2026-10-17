@@ -7,10 +7,11 @@
     "seed": "tsx prisma/seed.ts",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "postman": "tsx scripts/generate-postman.ts"
   },
   "keywords": [],
   "author": "",

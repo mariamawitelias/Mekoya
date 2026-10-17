@@ -35,6 +35,9 @@ if (!parsed.success) {
   }
   process.exit(1);
 }
-
+if (parsed.data.NODE_ENV === 'production' && parsed.data.JWT_ACCESS_SECRET.startsWith('replace-this')) {
+  console.error('JWT_ACCESS_SECRET is still the placeholder from .env.example. Generate a real secret.');
+  process.exit(1);
+}
 export const env = parsed.data;
 export type Env = typeof env;

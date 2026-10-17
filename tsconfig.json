@@ -6,6 +6,7 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "types": ["node"],
+    "outDir": "dist",
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
