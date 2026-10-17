@@ -109,7 +109,7 @@ Staff accounts are **never self-registered**. The Super Admin invites them by em
 | Transactional email | [section 10](#10-email) |
 | Generative AI with structured output and fallback | [section 11](#11-ai-features) |
 | Vitest and supertest | [section 12](#12-testing) |
-| RAG (optional) | **Not implemented.** See [section 14](#14-design-decisions-and-known-limitations). |
+
 
 ---
 
